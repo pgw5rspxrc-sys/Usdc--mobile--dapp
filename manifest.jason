@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "USDC Mobile Dapp",
+  "version": "1.0.0",
+  "description": "Mobile USDC sender",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": []
+}
