@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USDC Mobile Sender</title>
+<style>
+body{font-family:Arial;margin:0;background:#07111f;color:white}
+.app{max-width:520px;margin:auto;padding:18px}
+.card{background:#111827;border:1px solid #334155;border-radius:18px;padding:16px;margin:14px 0}
+h1{font-size:26px}
+input,button,textarea{width:100%;box-sizing:border-box;border-radius:12px;padding:14px;margin:8px 0;font-size:16px}
+input,textarea{background:#020617;color:white;border:1px solid #475569}
+button{background:#2563eb;color:white;border:0;font-weight:bold}
+.small{color:#94a3b8;font-size:13px}
+.warn{color:#fbbf24}
+.good{color:#22c55e}
+.bad{color:#ef4444}
+pre{white-space:pre-wrap;background:#020617;padding:12px;border-radius:12px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>USDC Mobile Sender</h1>
+<p class="small">Ethereum Mainnet USDC sender + Safe JSON builder.</p>
+
+<div class="card">
+<h2>1. Connect Wallet</h2>
+<button onclick="connectWallet()">Connect Rabby / MetaMask</button>
+<p id="walletStatus" class="small">Not connected</p>
+</div>
+
+<div class="card">
+<h2>2. Send USDC</h2>
+<input id="to" placeholder="Destination wallet 0x...">
+<input id="amount" placeholder="Amount e.g. 2.5">
+<button onclick="sendUSDC()">Send USDC</button>
+<p id="sendStatus" class="small"></p>
+</div>
+<div class="card">
+<h2>3. Safe Transaction JSON</h2>
+<button onclick="buildSafe()">Generate Safe JSON</button>
+<textarea id="safeJson" rows="12" placeholder="Safe transaction JSON will appear here"></textarea>
+</div>
+
+<div class="card">
+<h2>Status</h2>
+<pre id="log">Ready.</pre>
+</div>
+
+<script>
+const USDC="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+let account=null;
+
+function log(msg){
+ document.getElementById("log").textContent=msg;
+}
+
+async function connectWallet(){
+ if(!window.ethereum){
+   log("No wallet detected. Open this page in Rabby or MetaMask.");
+   return;
+ }
+ try{
+   const accounts=await window.ethereum.request({
+     method:"eth_requestAccounts"
+   });
+   account=accounts[0];
+   document.getElementById("walletStatus").textContent=
+      "Connected: "+account;
+   log("Wallet connected.");
+ }catch(e){
+   log(e.message);
+ }
+}
+
+function encodeTransfer(to,amount){
+ const selector="a9059cbb";
+ const addr=to.replace(/^0x/,"").padStart(64,"0");
+ const value=BigInt(Math.round(Number(amount)*1000000))
+      .toString(16)
+      .padStart(64,"0");
+ return "0x"+selector+addr+value;
+}async function sendUSDC(){
+  if(!window.ethereum){
+    log("No wallet detected.");
+    return;
+  }
+
+  const to=document.getElementById("to").value.trim();
+  const amount=document.getElementById("amount").value.trim();
+
+  if(!/^0x[a-fA-F0-9]{40}$/.test(to)){
+    log("Invalid destination address.");
+    return;
+  }
+
+  if(!amount || Number(amount)<=0){
+    log("Enter a valid USDC amount.");
+    return;
+  }
+
+  try{
+    const tx={
+      from:account,
+      to:USDC,
+      data:encodeTransfer(to,amount)
+    };
+
+    const hash=await window.ethereum.request({
+      method:"eth_sendTransaction",
+      params:[tx]
+    });
+
+    document.getElementById("sendStatus").textContent=
+      "Transaction submitted: "+hash;
+
+    log("Transaction sent successfully.");
+  }catch(err){
+    log(err.message || "Transaction failed.");
+  }
+}
+
+function buildSafe(){
+  const to=document.getElementById("to").value.trim();
+  const amount=document.getElementById("amount").value.trim();
+
+  const json={
+    version:"1.0",
+    chainId:"1",
+    createdAt:Date.now(),
+    meta:{
+      name:"USDC Transfer",
+      description:"Generated from mobile dApp"
+    },
+    transactions:[
+      {
+        to:USDC,
+        value:"0",
+        data:encodeTransfer(to,amount)
+      }
+    ]
+  };
+
+  document.getElementById("safeJson").value=
+    JSON.stringify(json,null,2);
+
+  log("Safe JSON generated.");
+}
+</script>
+
+</body>
+</html>
